@@ -1,0 +1,61 @@
+<div class="card">
+    <h3>Форма ввода</h3>
+
+    <div class="field">
+        <label for="name">Имя</label>
+        <input id="name" type="text" value="@_name" @oninput="OnNameInput" placeholder="Введите имя" />
+    </div>
+
+    <div class="field">
+        <label for="age">Возраст</label>
+        <input id="age" type="number" min="0" max="120" value="@_ageText" @oninput="OnAgeInput" />
+    </div>
+
+    <div class="field">
+        <span class="label">Пол</span>
+        @foreach (var g in Genders)
+        {
+            <label class="radio">
+                <input type="radio" name="gender" checked="@(_gender == g)" @onchange="() => OnGenderChange(g)" /> @g
+            </label>
+        }
+    </div>
+
+    <button class="btn secondary" @onclick="Reset">Сбросить</button>
+</div>
+
+<div class="card result">
+    <h3>Введённые данные</h3>
+    <p>Имя: <b>@(string.IsNullOrWhiteSpace(_name) ? "—" : _name)</b></p>
+    <p>Возраст: <b>@AgeView</b></p>
+    <p>Пол: <b>@_gender</b></p>
+</div>
+
+@code {
+    // Начальные значения формы
+    private const string DefaultName = "";
+    private const string DefaultAge = "18";
+    private const string DefaultGender = "Мужской";
+
+    private static readonly string[] Genders = ["Мужской", "Женский"];
+
+    private string _name = DefaultName;
+    private string _ageText = DefaultAge;
+    private string _gender = DefaultGender;
+
+    private string AgeView =>
+        _ageText == "" ? "—" :
+        int.TryParse(_ageText, out var a) && a is >= 0 and <= 120 ? a.ToString() : "некорректный возраст";
+
+    // События ввода: данные ниже формы обновляются при каждом символе
+    private void OnNameInput(ChangeEventArgs e) => _name = e.Value?.ToString() ?? "";
+    private void OnAgeInput(ChangeEventArgs e) => _ageText = e.Value?.ToString() ?? "";
+    private void OnGenderChange(string gender) => _gender = gender;
+
+    private void Reset()
+    {
+        _name = DefaultName;
+        _ageText = DefaultAge;
+        _gender = DefaultGender;
+    }
+}

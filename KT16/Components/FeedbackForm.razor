@@ -1,0 +1,132 @@
+@using System.Text.RegularExpressions
+
+<div class="card">
+    <h3>Обратная связь</h3>
+
+    <div class="field">
+        <label for="fb-name">Имя пользователя</label>
+        <input id="fb-name" type="text" value="@_name" @oninput="OnNameInput" class="@Css(_nameError)" />
+        @if (_nameError is not null) { <small class="err">@_nameError</small> }
+    </div>
+
+    <div class="field">
+        <label for="fb-email">Email</label>
+        <input id="fb-email" type="text" value="@_email" @oninput="OnEmailInput" class="@Css(_emailError)" placeholder="name@example.com" />
+        @if (_emailError is not null) { <small class="err">@_emailError</small> }
+    </div>
+
+    <div class="field">
+        <label for="fb-message">Сообщение</label>
+        <textarea id="fb-message" rows="4" value="@_message" @oninput="OnMessageInput" class="@Css(_messageError)"></textarea>
+        <small class="hint">@_message.Length / @MaxMessage</small>
+        @if (_messageError is not null) { <small class="err">@_messageError</small> }
+    </div>
+
+    <div class="field">
+        <label for="fb-captcha">Капча: сколько будет @_a + @_b ?</label>
+        <input id="fb-captcha" type="text" value="@_captcha" @oninput="OnCaptchaInput" class="@Css(_captchaError)" />
+        @if (_captchaError is not null) { <small class="err">@_captchaError</small> }
+    </div>
+
+    <button class="btn" @onclick="Submit">Отправить</button>
+    <button class="btn secondary" @onclick="Clear">Очистить</button>
+
+    @if (_sent)
+    {
+        <p class="ok">Форма отправлена!</p>
+    }
+</div>
+
+@if (_submitted is not null)
+{
+    <div class="card result">
+        <h3>Отправленные данные</h3>
+        <p>Имя: <b>@_submitted.Name</b></p>
+        <p>Email: <b>@_submitted.Email</b></p>
+        <p>Сообщение:</p>
+        <p class="msg">@_submitted.Message</p>
+        <small class="hint">@_submitted.SentAt.ToString("dd.MM.yyyy HH:mm:ss")</small>
+    </div>
+}
+
+@code {
+    private const int MaxMessage = 500;
+    private static readonly Regex EmailRx = new(@"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$");
+    private static readonly Random Rnd = new();
+
+    // Локальная переменная для сохранённых данных формы
+    private record FeedbackData(string Name, string Email, string Message, DateTime SentAt);
+    private FeedbackData? _submitted;
+
+    private string _name = "", _email = "", _message = "", _captcha = "";
+    private string? _nameError, _emailError, _messageError, _captchaError;
+    private bool _sent;
+    private int _a, _b;
+
+    protected override void OnInitialized() => NewCaptcha();
+
+    private static string? Css(string? error) => error is null ? null : "invalid";
+
+    // ---- события ввода: проверка в реальном времени ----
+    private void OnNameInput(ChangeEventArgs e)    { _name = e.Value?.ToString() ?? "";    _nameError = ValidateName();       _sent = false; }
+    private void OnEmailInput(ChangeEventArgs e)   { _email = e.Value?.ToString() ?? "";   _emailError = ValidateEmail();     _sent = false; }
+    private void OnMessageInput(ChangeEventArgs e) { _message = e.Value?.ToString() ?? ""; _messageError = ValidateMessage(); _sent = false; }
+    private void OnCaptchaInput(ChangeEventArgs e) { _captcha = e.Value?.ToString() ?? ""; _captchaError = ValidateCaptcha(); _sent = false; }
+
+    private string? ValidateName() =>
+        string.IsNullOrWhiteSpace(_name) ? "Введите имя" :
+        _name.Trim().Length < 2 ? "Имя слишком короткое (минимум 2 символа)" : null;
+
+    private string? ValidateEmail() =>
+        string.IsNullOrWhiteSpace(_email) ? "Введите email" :
+        !EmailRx.IsMatch(_email.Trim()) ? "Некорректный email (пример: name@example.com)" : null;
+
+    private string? ValidateMessage() =>
+        string.IsNullOrWhiteSpace(_message) ? "Введите сообщение" :
+        _message.Trim().Length < 10 ? "Сообщение слишком короткое (минимум 10 символов)" :
+        _message.Length > MaxMessage ? $"Сообщение слишком длинное (максимум {MaxMessage} символов)" : null;
+
+    private string? ValidateCaptcha() =>
+        string.IsNullOrWhiteSpace(_captcha) ? "Решите пример" :
+        int.TryParse(_captcha.Trim(), out var v) && v == _a + _b ? null : "Неверный ответ";
+
+    private void NewCaptcha()
+    {
+        _a = Rnd.Next(1, 10);
+        _b = Rnd.Next(1, 10);
+        _captcha = "";
+        _captchaError = null;
+    }
+
+    private void Submit()
+    {
+        _nameError = ValidateName();
+        _emailError = ValidateEmail();
+        _messageError = ValidateMessage();
+        _captchaError = ValidateCaptcha();
+
+        if (_nameError is not null || _emailError is not null || _messageError is not null || _captchaError is not null)
+        {
+            _sent = false;
+            return;
+        }
+
+        _submitted = new FeedbackData(_name.Trim(), _email.Trim(), _message.Trim(), DateTime.Now);
+        _sent = true;
+        ClearFields();
+    }
+
+    private void ClearFields()
+    {
+        _name = _email = _message = "";
+        _nameError = _emailError = _messageError = null;
+        NewCaptcha();
+    }
+
+    private void Clear()
+    {
+        ClearFields();
+        _sent = false;
+        _submitted = null;
+    }
+}
